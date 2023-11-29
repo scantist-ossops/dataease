@@ -890,6 +890,7 @@ export default {
     request_timeout: 'Request timeout',
     message_retention_time: 'Message retention time',
     log_retention_time: 'Log retention time',
+    ds_sync_log_retention_time: 'Data sync log retention time',
     ds_check_time: 'Data source detection interval',
     test_mail_recipient: 'Used only as a test mail recipient',
     to_enable_tsl: 'If the SMTP port is 587, you usually need to enable TSL',
@@ -1482,7 +1483,7 @@ export default {
     dimension_letter_space: 'Name Letter Space',
     font_family: 'Font Family',
     font_family_tip: 'The font will only take effect if it is installed on the operating system',
-    radar_max_tip: 'If the maximum value of the actual data is greater than the custom maximum value, the maximum value of the actual data will prevail.',
+    radar_min_max_tip: 'If the minimum value of the actual data is less than the custom minimum value, or the maximum value is greater than the custom maximum value, the actual data will prevail.',
     letter_space: 'Letter Space',
     font_shadow: 'Font Shadow',
     chart_area: 'Area',
@@ -1585,7 +1586,7 @@ export default {
     gauge_axis_label: 'Axis Label',
     word_size_range: 'Word Size Range',
     word_spacing: 'Word Spacing',
-    axis_multi_select_tip: 'Hold down the Ctrl or Shift key and click to select more than one'
+    axis_multi_select_tip: 'Hold down the Ctrl/Cmd or Shift key and click to select more than one'
   },
   dataset: {
     scope_edit: 'Effective only when editing',

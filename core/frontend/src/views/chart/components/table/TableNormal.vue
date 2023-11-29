@@ -41,6 +41,7 @@
         <ux-table-column
           type="index"
           :title="indexLabel"
+          :width="columnWidth"
         />
         <ux-table-column
           v-for="field in fields"
@@ -294,13 +295,17 @@ export default {
         }
         this.fields = fields
         const attr = JSON.parse(this.chart.customAttr)
+        if (this.currentPage.pageSize < attr.size.tablePageSize) {
+          this.currentPage.page = 1
+        }
         this.currentPage.pageSize = parseInt(attr.size.tablePageSize ? attr.size.tablePageSize : 20)
 
         // column width
         const containerWidth = this.$refs.tableContainer.offsetWidth
         const columnWidth = attr.size.tableColumnWidth ? attr.size.tableColumnWidth : this.columnWidth
-        if (columnWidth < (containerWidth / this.fields.length)) {
-          this.columnWidth = containerWidth / this.fields
+        const fieldsLength = attr.size.showIndex ? this.fields.length + 1 : this.fields.length
+        if (columnWidth < (containerWidth / fieldsLength)) {
+          this.columnWidth = containerWidth / fieldsLength
         } else {
           this.columnWidth = columnWidth
         }

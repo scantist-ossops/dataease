@@ -387,6 +387,7 @@ export default {
   position: absolute;
   top: 0;
   left: 0;
+  z-index: 2;
   width: 100% !important;
   height: 100% !important;
 }
@@ -397,13 +398,6 @@ export default {
 
 .component-active {
   z-index: 1;
-}
-
-.fullscreen {
-  transform: translate(0);
-  .main_view {
-    z-index: 0;
-  }
 }
 .user-view {
   transform: translate(0);

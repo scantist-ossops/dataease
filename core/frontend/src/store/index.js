@@ -473,6 +473,7 @@ const data = {
             // 获取外部参数的值 sourceInfo 是外部参数名称 支持数组传入
             let paramValue = params[sourceInfo]
             let paramValueStr = params[sourceInfo]
+            let paramValueTree = params[sourceInfo]
             let operator = 'in'
             if (paramValue && !Array.isArray(paramValue)) {
               paramValue = [paramValue]
@@ -482,8 +483,10 @@ const data = {
               paramValue.forEach((innerValue, index) => {
                 if (index === 0) {
                   paramValueStr = innerValue
+                  paramValueTree = innerValue
                 } else {
                   paramValueStr = paramValueStr + ',' + innerValue
+                  paramValueTree = paramValueTree + '-de-' + innerValue
                 }
               })
             }
@@ -509,7 +512,21 @@ const data = {
                 currentFilters.push(condition)
               }
               if (element.type === 'custom' && element.id === targetViewId) { // 过滤组件处理
-                element.options.value = paramValueStr
+                if (element.component === 'de-number-range') {
+                  element.options.value = paramValue
+                } else if (element.component === 'de-select-tree') {
+                  element.options.value = paramValueTree
+                } else {
+                  element.options.value = paramValueStr
+                }
+                // 去掉动态时间
+                if (element.options.manualModify) {
+                  element.options.manualModify = false
+                }
+                // 去掉首选项
+                if (element.options?.attr?.selectFirst) {
+                  element.options.attr.selectFirst = false
+                }
               }
             })
             if (element.type === 'view') {

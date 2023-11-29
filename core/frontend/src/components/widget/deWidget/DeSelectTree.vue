@@ -169,8 +169,6 @@ export default {
       }
       this.show = false
       this.$nextTick(() => {
-        // this.value = value ? [] : null
-
         this.show = true
         this.$nextTick(() => {
           const defaultV = this.element.options.value === null ? '' : this.element.options.value.toString()
@@ -213,7 +211,6 @@ export default {
           this.$refs.deSelectTree && this.$refs.deSelectTree.treeDataUpdateFun(this.data)
         })
       })
-      this.element.options.value = ''
     }
 
   },
@@ -237,8 +234,10 @@ export default {
       this.value = this.element.options.attrs.multiple ? [] : null
       this.$refs.deSelectTree && this.$refs.deSelectTree.resetSelectAll && this.$refs.deSelectTree.resetSelectAll()
     },
-    resetDefaultValue(id) {
-      if (this.inDraw && this.manualModify && this.element.id === id) {
+    resetDefaultValue(ele) {
+      const id = ele.id
+      const eleVal = ele.options.value.toString()
+      if (this.inDraw && this.manualModify && this.element.id === id && this.value.toString() !== eleVal && this.defaultValueStr === eleVal) {
         this.value = this.fillValueDerfault()
         this.changeValue(this.value)
       }
