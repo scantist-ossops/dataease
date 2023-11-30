@@ -1,110 +1,314 @@
 <template>
-  <el-row class="outer-body" v-loading="state.loading">
-    <!--预览模式-->
-    <market-preview
-      v-show="previewModel"
+  <el-row
+    class="template-outer-body"
+    :class="{ 'template-outer-body-padding': outPaddingState }"
+    v-loading="state.loading"
+    v-show="state.initReady"
+  >
+    <market-preview-v2
+      v-show="previewModel === 'marketPreview'"
       :preview-id="state.templatePreviewId"
       @closePreview="closePreview"
       @templateApply="templateApply"
-    />
-    <!--列表模式-->
-    <el-row v-show="!previewModel" class="market-main">
-      <el-row>
-        <el-col :span="12">
-          <span class="title-left">{{ t('visualization.template_market') }}</span>
-        </el-col>
-        <el-col :span="12">
+    ></market-preview-v2>
+    <el-row v-if="previewModel === 'createPreview'" class="main-container">
+      <el-row class="market-head">
+        <el-icon class="custom-back-icon hover-icon" @click="previewModel = 'full'"
+          ><ArrowLeft
+        /></el-icon>
+        <span>{{ state.curTemplate.title }} </span>
+        <el-row class="head-right">
+          <el-button :disabled="state.curTemplateIndex === 0" style="float: right" @click="preOne"
+            >上一个</el-button
+          >
+          <el-button
+            :disabled="state.curTemplateIndex === state.curTemplateShowFilter.length - 1"
+            style="float: right"
+            @click="nextOne"
+            >下一个</el-button
+          >
+          <el-button
+            style="float: right"
+            type="primary"
+            @click="templateApply(state.curTemplate)"
+            >{{ t('visualization.apply_this_template') }}</el-button
+          >
+          <el-divider class="custom-divider-line" direction="vertical" />
+          <el-icon class="custom-market-icon hover-icon" @click="close"><Close /></el-icon>
+        </el-row>
+      </el-row>
+      <el-row class="template-area">
+        <el-row class="img-main-create">
+          <img style="height: 100%" :src="curTemplateImg" alt="" />
+        </el-row>
+      </el-row>
+    </el-row>
+    <el-row v-show="previewModel === 'full'" class="main-container">
+      <el-row class="market-head">
+        <span>{{ title }} </span>
+        <el-row class="head-right">
           <el-input
+            class="title-search"
             v-model="state.searchText"
-            prefix-icon="el-icon-search"
-            size="small"
-            class="title-right"
+            prefix-icon="Search"
             :placeholder="t('visualization.enter_template_name_tips')"
             :clearable="true"
           />
-        </el-col>
+          <el-select class="title-type" v-model="state.templateSourceType" placeholder="Select">
+            <el-option
+              v-for="item in state.templateSourceOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
+          <el-select
+            v-if="['branchCreate', 'branch'].includes(state.curPosition)"
+            class="title-type"
+            v-model="state.templateType"
+            placeholder="Select"
+          >
+            <el-option
+              v-for="item in state.templateTypeOptions"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+            />
+          </el-select>
+          <template v-if="['branchCreate', 'create'].includes(state.curPosition)">
+            <el-divider class="custom-divider-line" direction="vertical" />
+            <el-icon class="custom-market-icon hover-icon" @click="close"><Close /></el-icon>
+          </template>
+        </el-row>
       </el-row>
-      <el-row class="custom-tabs-head">
-        <el-tabs v-model="state.marketActiveTab" @tab-click="handleClick">
-          <el-tab-pane
-            v-for="tabItem in state.marketTabs"
-            :key="tabItem"
-            :label="tabItem"
-            :name="tabItem"
+      <el-row class="template-area">
+        <div class="template-left">
+          <el-tree
+            v-if="state.treeShow"
+            menu
+            class="custom-market-tree"
+            v-model="state.marketActiveTab"
+            :data="categoriesComputed"
+            :props="state.treeProps"
+            node-key="label"
+            default-expand-all
+            highlight-current
+            :current-node-key="state.marketActiveTab"
+            @node-click="nodeClick"
           />
-        </el-tabs>
-      </el-row>
-      <el-row
-        v-show="state.networkStatus && state.hasResult"
-        id="template-main"
-        class="template-main"
-      >
-        <el-col
-          v-for="templateItem in state.currentMarketTemplateShowList"
-          v-show="templateItem.showFlag"
-          :key="templateItem.id"
-          style="padding: 24px 12px 0; text-align: center; flex: 0"
-          :style="{ width: state.templateSpan }"
-        >
-          <template-market-item
-            :key="'outer-' + templateItem.id"
-            :template="templateItem"
-            :base-url="state.baseUrl"
-            :width="state.templateCurWidth"
-            @templateApply="templateApply"
-            @templatePreview="templatePreview"
-          />
-        </el-col>
-      </el-row>
-      <el-row
-        v-show="state.networkStatus && !state.hasResult"
-        class="custom-position template-main"
-      >
-        <div style="text-align: center">
-          <Icon name="no_result" style="margin-bottom: 16px; font-size: 75px"></Icon>
-          <br />
-          <span>{{ t('commons.no_result') }}</span>
         </div>
-      </el-row>
-      <el-row v-show="!state.networkStatus" class="custom-position template-main">
-        {{ t('visualization.market_network_tips') }}
+        <div
+          v-show="state.networkStatus && state.hasResult"
+          id="template-show-area"
+          class="template-right"
+        >
+          <template v-if="state.marketActiveTab !== '推荐'">
+            <el-col class="main-head">
+              <div class="custom-split-line"></div>
+              <span v-show="!state.searchText" class="custom-category">{{
+                state.marketActiveTab
+              }}</span>
+              <span v-show="state.searchText" class="custom-search">{{
+                state.marketActiveTab
+              }}</span>
+              <span v-if="state.searchText" class="custom-search-result"
+                >的搜索结果是{{ searchResultCount }}个</span
+              >
+            </el-col>
+            <el-col
+              v-for="templateItem in state.currentMarketTemplateShowList"
+              v-show="templateItem.showFlag"
+              :key="templateItem.id"
+              style="float: left; padding: 24px 12px 0; text-align: center; flex: 0"
+              :style="{ width: state.templateSpan }"
+            >
+              <template-market-v2-item
+                :key="'outer-' + templateItem.id"
+                :template="templateItem"
+                :base-url="state.baseUrl"
+                :width="state.templateCurWidth"
+                :cur-position="state.curPosition"
+                @templateApply="templateApply"
+                @templatePreview="templatePreview"
+              />
+            </el-col>
+          </template>
+
+          <template v-if="state.marketActiveTab === '推荐'">
+            <el-row
+              :key="'full-' + categoryItem.label"
+              style="display: inline; margin-bottom: 16px"
+              v-for="categoryItem in categoriesComputed.filter(
+                item => !['最近使用', '推荐'].includes(item.label)
+              )"
+            >
+              <el-col class="main-head">
+                <div class="custom-split-line"></div>
+                <span v-show="!state.searchText" class="custom-category">{{
+                  categoryItem.label
+                }}</span>
+                <span v-show="state.searchText" class="custom-search">{{
+                  categoryItem.label
+                }}</span>
+                <span v-if="state.searchText" class="custom-search-result"
+                  >的搜索结果是{{ fullTemplateShowList(categoryItem.label).length }}个</span
+                >
+              </el-col>
+              <el-col
+                v-for="templateItem in fullTemplateShowList(categoryItem.label)"
+                v-show="templateItem.showFlag"
+                :key="templateItem.id + categoryItem.label"
+                style="float: left; padding: 24px 12px 0; text-align: center; flex: 0"
+                :style="{ width: state.templateSpan }"
+              >
+                <template-market-v2-item
+                  :key="'outer-' + templateItem.id"
+                  :template="templateItem"
+                  :base-url="state.baseUrl"
+                  :width="state.templateCurWidth"
+                  :cur-position="state.curPosition"
+                  @templateApply="templateApply"
+                  @templatePreview="templatePreview"
+                />
+              </el-col>
+            </el-row>
+          </template>
+        </div>
+        <el-row v-show="state.networkStatus && !state.hasResult" class="template-empty">
+          <div style="text-align: center">
+            <Icon name="no_result" style="margin-bottom: 16px; font-size: 75px"></Icon>
+            <br />
+            <span>没有找到相关模板</span>
+          </div>
+        </el-row>
+        <el-row v-show="!state.networkStatus" class="template-empty">
+          {{ t('visualization.market_network_tips') }}
+        </el-row>
       </el-row>
     </el-row>
   </el-row>
 </template>
 
 <script setup lang="ts">
-import { getCategories, searchMarket } from '@/api/templateMarket'
+import { getCategoriesObject, searchMarket } from '@/api/templateMarket'
 import elementResizeDetectorMaker from 'element-resize-detector'
-import { nextTick, reactive, watch, onMounted, ref } from 'vue'
+import { nextTick, reactive, watch, onMounted, ref, computed } from 'vue'
 import { useI18n } from '@/hooks/web/useI18n'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus-secondary'
-import MarketPreview from '@/views/template-market/component/MarketPreview.vue'
-import TemplateMarketItem from '@/views/template-market/component/TemplateMarketItem.vue'
 import { decompression } from '@/api/visualization/dataVisualization'
 import { useCache } from '@/hooks/web/useCache'
+import TemplateMarketV2Item from '@/views/template-market/component/TemplateMarketV2Item.vue'
+import MarketPreviewV2 from '@/views/template-market/component/MarketPreviewV2.vue'
+import { propTypes } from '@/utils/propTypes'
+import { imgUrlTrans } from '@/utils/imgUtils'
 const { t } = useI18n()
 const { wsCache } = useCache()
+const route = useRoute()
 
-const previewModel = ref(false)
+// full 正常展示 marketPreview 模板中心预览 createPreview 创建界面预览
+const previewModel = ref('full')
+const emits = defineEmits(['close'])
+
+const close = () => {
+  emits('close')
+}
+
+const title = computed(() => (state.curPosition === 'branch' ? '模板中心' : '使用模版新建'))
+
+const categoriesComputed = computed(() => {
+  if (state.templateSourceType === 'all') {
+    return state.marketTabs
+  } else {
+    return state.marketTabs.filter(
+      category => category.source === 'public' || category.source === state.templateSourceType
+    )
+  }
+})
+
+const curTemplateImg = computed(() => {
+  if (
+    state.curTemplate.thumbnail.indexOf('http') > -1 ||
+    state.curTemplate.thumbnail.indexOf('static-resource') > -1
+  ) {
+    return imgUrlTrans(state.curTemplate.thumbnail)
+  } else {
+    return imgUrlTrans(state.baseUrl + state.curTemplate.thumbnail)
+  }
+})
+
+const outPaddingState = computed(() => {
+  return state.curPosition === 'branch' && previewModel.value !== 'marketPreview'
+})
+
+const optInit = params => {
+  state.initReady = false
+  state.curPosition = params.curPosition
+  state.templateType = params.templateType
+  previewModel.value = 'full'
+  state.pid = params.pid
+  nextTick(() => {
+    state.initReady = true
+  })
+}
 
 const state = reactive({
+  initReady: true,
+  curPosition: 'branch',
+  pid: null,
+  treeProps: {
+    value: 'label',
+    label: 'label'
+  },
+  templateType: 'all',
+  templateSourceType: 'all',
+  treeShow: true,
+  templateSourceOptions: [
+    {
+      value: 'all',
+      label: '全部来源'
+    },
+    {
+      value: 'market',
+      label: '模板市场'
+    },
+    {
+      value: 'manage',
+      label: '模板管理'
+    }
+  ],
+  templateTypeOptions: [
+    {
+      value: 'all',
+      label: '全部类型'
+    },
+    {
+      value: 'PANEL',
+      label: '仪表板'
+    },
+    {
+      value: 'SCREEN',
+      label: '大屏'
+    }
+  ],
   loading: false,
   hasResult: true,
-  templateMiniWidth: 330,
+  templateMiniWidth: 250,
   templateCurWidth: 310,
   templateSpan: '25%',
   previewVisible: false,
   templatePreviewId: '',
-  marketTabs: null,
+  marketTabs: [],
   marketActiveTab: null,
   searchText: null,
   dvCreateForm: {
+    resourceName: null,
     name: null,
     pid: null,
     nodeType: 'panel',
     templateUrl: null,
     newFrom: 'new_market_template',
+    templateId: null,
     panelType: 'self',
     panelStyle: {},
     panelData: '[]'
@@ -114,6 +318,9 @@ const state = reactive({
   folderSelectShow: false,
   baseUrl: 'https://dataease.io/templates',
   currentMarketTemplateShowList: [],
+  curTemplateShowFilter: [],
+  curTemplateIndex: 0,
+  curTemplate: null,
   networkStatus: true,
   rule: {
     name: [
@@ -134,47 +341,68 @@ const state = reactive({
 })
 
 watch(
-  () => state.marketActiveTab,
-  value => {
-    initTemplateShow()
-  }
-)
-
-watch(
   () => state.searchText,
   value => {
     initTemplateShow()
   }
 )
 
+watch(
+  () => state.templateType,
+  value => {
+    initTemplateShow()
+  }
+)
+
+watch(
+  () => state.templateSourceType,
+  value => {
+    state.treeShow = false
+    initTemplateShow()
+    nextTick(() => {
+      state.treeShow = true
+      initStyle()
+    })
+  }
+)
+
+const searchResultCount = computed(
+  () => state.currentMarketTemplateShowList.filter(template => template.showFlag).length
+)
+
+const nodeClick = data => {
+  state.marketActiveTab = data.label
+  initTemplateShow()
+}
 const closePreview = () => {
-  previewModel.value = false
+  previewModel.value = 'full'
 }
 
-const initMarketTemplate = () => {
-  searchMarket()
+const initMarketTemplate = async () => {
+  await searchMarket()
     .then(rsp => {
       state.baseUrl = rsp.data.baseUrl
       state.currentMarketTemplateShowList = rsp.data.contents
-    })
-    .catch(() => {
-      state.networkStatus = false
-    })
-  getCategories()
-    .then(rsp => {
-      state.marketTabs = rsp.data
-      state.marketActiveTab = state.marketTabs[0]
+      state.marketTabs = rsp.data.categories
+      state.marketActiveTab = state.marketTabs[0].label
+      initStyle()
+      initTemplateShow()
     })
     .catch(() => {
       state.networkStatus = false
     })
 }
 
-const getGroupTree = () => {
-  // do getGroupTree
-  // groupTree({ nodeType: 'folder' }).then(res => {
-  //   state.panelGroupList = res.data
-  // })
+const initStyle = () => {
+  nextTick(() => {
+    const tree = document.querySelector('.custom-market-tree')
+    // 创建横线元素
+    const line = document.createElement('hr')
+    line.classList.add('custom-line')
+
+    // 将横线元素插入到第一个选项后面
+    tree.firstElementChild.appendChild(line)
+  })
 }
 const normalizer = node => {
   // 去掉children=null的属性
@@ -183,21 +411,43 @@ const normalizer = node => {
   }
 }
 
+const preOne = () => {
+  if (state.curTemplateIndex > 0) {
+    state.curTemplateIndex--
+    state.curTemplate = state.curTemplateShowFilter[state.curTemplateIndex]
+  }
+}
+
+const nextOne = () => {
+  if (state.curTemplateIndex < state.curTemplateShowFilter.length - 1) {
+    state.curTemplateIndex++
+    state.curTemplate = state.curTemplateShowFilter[state.curTemplateIndex]
+  }
+}
+
 const templateApply = template => {
   state.curApplyTemplate = template
   state.dvCreateForm.name = template.title
-  state.dvCreateForm.templateUrl = template.metas.theme_repo
+  if (template.source === 'market') {
+    state.dvCreateForm.newFrom = 'new_market_template'
+    state.dvCreateForm.templateUrl = template.metas.theme_repo
+    state.dvCreateForm.resourceName = template.id
+  } else {
+    state.dvCreateForm.newFrom = 'new_inner_template'
+    state.dvCreateForm.templateId = template.id
+  }
   apply()
 }
 
 const apply = () => {
-  if (!state.dvCreateForm.templateUrl) {
+  if (state.dvCreateForm.newFrom === 'new_market_template' && !state.dvCreateForm.templateUrl) {
     ElMessage.warning('未获取模板下载链接请联系模板市场官方')
     return false
   }
   state.loading = true
   decompression(state.dvCreateForm)
     .then(response => {
+      state.curApplyTemplate.recentUseTime = Date.now()
       state.loading = false
       const templateData = response.data
       // do create
@@ -215,10 +465,10 @@ const apply = () => {
 const handleClick = item => {
   // do handleClick
 }
-const initTemplateShow = () => {
+const initTemplateShow = (activeTab = state.marketActiveTab) => {
   let tempHasResult = false
   state.currentMarketTemplateShowList.forEach(template => {
-    template.showFlag = templateShow(template)
+    template.showFlag = templateShow(template, activeTab)
     if (template.showFlag) {
       tempHasResult = true
     }
@@ -228,155 +478,229 @@ const initTemplateShow = () => {
   }
 }
 
-const templateShow = templateItem => {
+const fullTemplateShowList = curTab => {
+  state.currentMarketTemplateShowList.forEach(template => {
+    template.showFlag = templateShow(template, curTab)
+  })
+  return state.currentMarketTemplateShowList.filter(ele => ele.showFlag)
+}
+
+const templateShow = (templateItem, activeTab) => {
   let categoryMarch = false
   let searchMarch = false
-  templateItem.categories.forEach(category => {
-    if (category.name === state.marketActiveTab) {
+  let templateTypeMarch = false
+  let templateSourceTypeMarch = false
+  if (activeTab === '最近使用') {
+    if (templateItem.recentUseTime) {
       categoryMarch = true
     }
-  })
+  } else if (activeTab === '推荐') {
+    if (templateItem.suggest === 'Y') {
+      categoryMarch = true
+    }
+  } else {
+    templateItem.categories.forEach(category => {
+      if (category.name === activeTab) {
+        categoryMarch = true
+      }
+    })
+  }
+
   if (!state.searchText || templateItem.title.indexOf(state.searchText) > -1) {
     searchMarch = true
   }
-  return categoryMarch && searchMarch
+
+  if (state.templateType === 'all' || templateItem.templateType === state.templateType) {
+    templateTypeMarch = true
+  }
+
+  if (state.templateSourceType === 'all' || templateItem.source === state.templateSourceType) {
+    templateSourceTypeMarch = true
+  }
+  return categoryMarch && searchMarch && templateTypeMarch && templateSourceTypeMarch
 }
 
 const templatePreview = previewId => {
-  state.templatePreviewId = previewId
-  previewModel.value = true
-}
-const newPanel = () => {
-  // do newPanel
+  if (state.curPosition === 'branch') {
+    // 模版中心模式
+    state.templatePreviewId = previewId
+    previewModel.value = 'marketPreview'
+  } else {
+    state.curTemplateShowFilter =
+      state.marketActiveTab === '推荐'
+        ? state.currentMarketTemplateShowList
+        : state.currentMarketTemplateShowList.filter(ele => ele.showFlag)
+    state.curTemplateIndex = state.curTemplateShowFilter.findIndex(temp => temp.id === previewId)
+    state.curTemplate = state.curTemplateShowFilter[state.curTemplateIndex]
+    previewModel.value = 'createPreview'
+  }
 }
 
 onMounted(() => {
+  previewInit()
   initMarketTemplate()
-  getGroupTree()
   const erd = elementResizeDetectorMaker()
-  const templateMainDom = document.getElementById('template-main')
+  const templateMainDom = document.getElementById('template-show-area')
   // 监听div变动事件
   if (templateMainDom) {
     erd.listenTo(templateMainDom, element => {
       nextTick(() => {
-        const curSeparator = Math.trunc(templateMainDom.offsetWidth / state.templateMiniWidth)
-        state.templateSpan =
-          100 / Math.trunc(templateMainDom.offsetWidth / state.templateMiniWidth) + '%'
-        state.templateCurWidth = Math.trunc(templateMainDom.offsetWidth / curSeparator) - 33
+        const offsetWidth = templateMainDom.offsetWidth - 26
+        const curSeparator = Math.trunc(offsetWidth / state.templateMiniWidth)
+        state.templateSpan = 100 / Math.trunc(offsetWidth / state.templateMiniWidth) + '%'
+        state.templateCurWidth = Math.trunc(offsetWidth / curSeparator) - 33
       })
     })
   }
 })
+
+const previewInit = () => {
+  const previewId = wsCache.get('template-preview-id')
+  if (previewId) {
+    templatePreview(previewId)
+    wsCache.delete('template-preview-id')
+  }
+}
+
+defineExpose({
+  optInit
+})
 </script>
 
 <style lang="less" scoped>
-.custom-tabs-head {
-  display: inherit;
-  padding-bottom: 15px;
-  ::v-deep(.ed-tabs__item) {
-    font-weight: 400;
-    font-size: 14px;
-  }
-}
-
-.template-main {
-  text-align: center;
-  border-radius: 4px;
-  padding: 0 12px 24px 12px;
-  height: calc(100vh - 190px) !important;
-  overflow-x: hidden;
-  overflow-y: auto;
-  background-color: var(--ContentBG, #ffffff);
-}
-
-.market-main {
+.template-outer-body-padding {
   padding: 24px;
-  display: inherit;
 }
+.template-outer-body {
+  .main-container {
+    display: flex;
+    flex-wrap: nowrap;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    .market-head {
+      height: 56px;
+      background: #ffffff;
+      align-items: center;
+      padding: 12px 24px;
+      border-bottom: 1px solid rgba(31, 35, 41, 0.15);
+      span {
+        font-size: 16px;
+        font-color: #1f2329;
+        font-weight: 500;
+      }
+      .head-right {
+        flex: 1;
+        justify-content: right;
+        .title-search {
+          width: 320px;
+        }
+        .title-type {
+          margin-left: 12px;
+          width: 104px;
+        }
+      }
+    }
+    .template-area {
+      height: calc(100vh - 135px);
+      .template-left {
+        padding: 8px;
+        width: 204px;
+        height: 100%;
+        overflow-y: auto;
+        background: #ffffff;
+      }
+      .template-right {
+        flex: 1;
+        display: inline;
+        height: 100%;
+        background: rgba(239, 240, 241, 1);
+        overflow-y: auto;
+        padding: 0 12px 16px 12px;
+      }
 
-.title-left {
-  float: left;
-  font-size: 20px;
-  font-weight: 500;
-  line-height: 28px;
-  color: var(--TextPrimary, #1f2329);
-}
-
-.title-right {
-  float: right;
-  width: 320px;
-}
-
-.dialog-footer-self {
-  text-align: right;
-}
-
-.search-button-self {
-  text-align: left;
-  padding-left: 10px;
-}
-
-.topbar-icon-active {
-  cursor: pointer;
-  transition: 0.1s;
-  border-radius: 3px;
-  font-size: 22px;
-  background-color: rgb(245, 245, 245);
-
-  &:active {
-    color: #000;
-    border-color: #3a8ee6;
-    background-color: red;
-    outline: 0;
+      .template-empty {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        background: rgba(239, 240, 241, 1);
+        overflow-y: auto;
+      }
+    }
   }
-
-  &:hover {
-    background-color: rgba(31, 35, 41, 0.1);
-    color: #3a8ee6;
-  }
 }
 
-.custom-position {
-  height: 80vh;
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  flex-flow: row nowrap;
-  color: #646a73;
-  font-weight: 400;
-}
-
-.outer-body {
-  display: inherit;
+.main-head {
   width: 100%;
-  height: calc(100vh - 56px);
-  background-color: var(--MainBG, #f5f6f7);
+  float: left;
+  height: 24px;
+  margin-top: 16px;
+  display: inline;
+  .custom-split-line {
+    margin: 4px 8px 0 12px;
+    width: 2px;
+    height: 16px;
+    background: rgba(51, 112, 255, 1);
+    float: left;
+  }
+  .custom-category {
+    float: left;
+    font-weight: 500;
+    font-size: 16px;
+    color: rgba(31, 35, 41, 1);
+  }
+  .custom-search {
+    float: left;
+    font-weight: 500;
+    font-size: 16px;
+    color: rgba(51, 112, 255, 1);
+    margin-right: 8px;
+  }
+
+  .custom-search-result {
+    float: left;
+    font-weight: 500;
+    font-size: 16px;
+    color: rgba(31, 35, 41, 1);
+    margin-right: 8px;
+  }
 }
 
-.market-dialog-css {
-  ::v-deep(.ed-form-item__label) {
-    width: 100% !important;
-    text-align: left;
-  }
+.custom-divider-line {
+  height: 16px;
+  margin-top: 6px;
+}
 
-  ::v-deep(.ed-form-item.is-required:not(.is-no-asterisk) > .ed-form-item__label:before) {
-    display: none;
-  }
+.custom-market-icon {
+  font-size: 20px;
+  margin-top: 4px;
+  cursor: pointer;
+}
 
-  ::v-deep(.ed-form-item.is-required:not(.is-no-asterisk) > .ed-form-item__label::after) {
-    content: '*';
-    color: #f54a45;
-    margin-left: 2px;
-  }
+.custom-back-icon {
+  font-size: 20px;
+  cursor: pointer;
+  margin-right: 8px;
+}
 
-  ::v-deep(.ed-form-item__content) {
-    margin-left: 0 !important;
-  }
+.img-main-create {
+  display: inherit;
+  justify-content: center;
+  width: 100%;
+  background: #0f1114;
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 100%;
+}
+</style>
 
-  ::v-deep(.vue-treeselect__input) {
-    vertical-align: middle;
-  }
+<style lang="less">
+.custom-line {
+  margin: 4px;
+  background: rgba(31, 35, 41, 0.15);
+  border: 0;
+  height: 1px;
 }
 </style>

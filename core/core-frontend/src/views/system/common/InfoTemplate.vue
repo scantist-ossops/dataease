@@ -1,6 +1,6 @@
 <template>
   <div class="info-template-container">
-    <div class="info-template-header">
+    <div v-if="!props.hideHead" class="info-template-header">
       <div class="info-template-title">
         <span>{{ curTitle }}</span>
       </div>
@@ -11,7 +11,7 @@
     <div class="info-template-content">
       <div class="info-content-item" v-for="item in settingList" :key="item.pkey">
         <div class="info-item-label">
-          <span>{{ item.pkey }}</span>
+          <span>{{ t(item.pkey) }}</span>
           <el-tooltip
             v-if="tooltipItem[item.pkey]"
             effect="dark"
@@ -24,16 +24,50 @@
         <div class="info-item-content">
           <div class="info-item-pwd" v-if="item.type === 'pwd'">
             <span>{{ pwdItem[item.pkey]['hidden'] ? '********' : item.pval }}</span>
-            <el-tooltip effect="dark" content="新页面预览" placement="top">
-              <el-icon
-                class="hover-icon hover-icon-in-table switch-pwd-icon"
-                @click="switchPwd(item.pkey)"
-              >
-                <Icon :name="pwdItem[item.pkey]['hidden'] ? 'eye' : 'eye-open'"></Icon>
-              </el-icon>
+
+            <el-tooltip
+              v-if="props.copyList.includes(item.pkey)"
+              effect="dark"
+              :content="t('common.copy')"
+              placement="top"
+            >
+              <el-button text @click="copyVal(item.pval)" class="setting-tip-btn">
+                <template #icon>
+                  <Icon name="de-copy"></Icon>
+                </template>
+              </el-button>
+            </el-tooltip>
+
+            <el-tooltip
+              effect="dark"
+              :content="pwdItem[item.pkey]['hidden'] ? '点击隐藏' : '点击显示'"
+              placement="top"
+            >
+              <el-button text @click="switchPwd(item.pkey)" class="setting-tip-btn">
+                <template #icon>
+                  <Icon :name="pwdItem[item.pkey]['hidden'] ? 'eye' : 'eye-open'"></Icon>
+                </template>
+              </el-button>
             </el-tooltip>
           </div>
-          <span v-else>{{ item.pval }}</span>
+          <span v-else-if="item.pkey.includes('basic.dsIntervalTime')">
+            <span>{{ item.pval + ' ' + executeTime + '执行一次' }}</span>
+          </span>
+          <span v-else>
+            <span>{{ item.pval }}</span>
+            <el-tooltip
+              v-if="props.copyList.includes(item.pkey)"
+              effect="dark"
+              :content="t('common.copy')"
+              placement="top"
+            >
+              <el-button text @click="copyVal(item.pval)" class="setting-tip-btn">
+                <template #icon>
+                  <Icon name="de-copy"></Icon>
+                </template>
+              </el-button>
+            </el-tooltip>
+          </span>
         </div>
       </div>
     </div>
@@ -43,6 +77,9 @@
 import { ref, defineProps, PropType, computed } from 'vue'
 import { useI18n } from '@/hooks/web/useI18n'
 import { SettingRecord, ToolTipRecord } from './SettingTemplate'
+import useClipboard from 'vue-clipboard3'
+import { ElMessage } from 'element-plus-secondary'
+const { toClipboard } = useClipboard()
 const { t } = useI18n()
 const props = defineProps({
   settingKey: {
@@ -60,102 +97,52 @@ const props = defineProps({
   settingTitle: {
     type: String,
     default: '基础设置'
+  },
+  hideHead: {
+    type: Boolean,
+    default: false
+  },
+  copyList: {
+    type: Array as PropType<string[]>,
+    default: () => []
   }
 })
-
+const executeTime = ref('0分0秒')
 const curTitle = computed(() => {
   return props.settingTitle
 })
-
+const copyVal = async val => {
+  try {
+    await toClipboard(val)
+    ElMessage.success(t('common.copy_success'))
+  } catch (e) {
+    ElMessage.warning(t('common.copy_unsupported'), e)
+  }
+}
 const loadList = () => {
+  settingList.value = []
   if (props.settingData?.length) {
     props.settingData.forEach(item => {
-      settingList.value.push(item)
+      if (item.pkey.includes('basic.dsExecuteTime')) {
+        executeTime.value = getExecuteTime(item.pval)
+      } else {
+        settingList.value.push(item)
+      }
     })
   }
 }
 
+const getExecuteTime = val => {
+  const options = [
+    { value: 'minute', label: '分钟（执行时间：0秒）' },
+    { value: 'hour', label: '小时（执行时间：0分0秒）' }
+  ]
+  return options.filter(item => item.value === val)[0].label
+}
+
 const settingList = ref([] as SettingRecord[])
 
-const loadBasic = () => {
-  settingList.value.push({
-    pkey: '请求超时时间',
-    pval: '100',
-    type: 'text',
-    sort: 1
-  })
-  settingList.value.push({
-    pkey: '数据源检测时间间隔',
-    pval: '100',
-    type: 'text',
-    sort: 2
-  })
-  settingList.value.push({
-    pkey: '默认登录方式',
-    pval: '普通登录',
-    type: 'text',
-    sort: 3
-  })
-  settingList.value.push({
-    pkey: '默认密码',
-    pval: 'DataEase@123456',
-    type: 'pwd',
-    sort: 4
-  })
-}
-
-const loadEmail = () => {
-  settingList.value.push({
-    pkey: 'SMTP主机',
-    pval: 'smtp.exmail.qq.com',
-    type: 'text',
-    sort: 1
-  })
-  settingList.value.push({
-    pkey: 'SMTP端口',
-    pval: '465',
-    type: 'text',
-    sort: 2
-  })
-  settingList.value.push({
-    pkey: 'SMTP账户',
-    pval: 'test@fit2cloud.com',
-    type: 'text',
-    sort: 3
-  })
-  settingList.value.push({
-    pkey: 'SMTP密码',
-    pval: 'DataEase@123456',
-    type: 'pwd',
-    sort: 4
-  })
-  settingList.value.push({
-    pkey: '测试收件人',
-    pval: 'yawen.chen@fit2cloud.com',
-    type: 'pwd',
-    sort: 5
-  })
-  settingList.value.push({
-    pkey: 'SSL',
-    pval: '开启',
-    type: 'text',
-    sort: 6
-  })
-  settingList.value.push({
-    pkey: 'TSL',
-    pval: '未开启',
-    type: 'text',
-    sort: 7
-  })
-}
-
 const init = () => {
-  if (props.settingKey === 'basic') {
-    loadBasic()
-  }
-  if (props.settingKey === 'email') {
-    loadEmail()
-  }
   if (props.settingData?.length) {
     loadList()
   }
@@ -186,12 +173,20 @@ const emits = defineEmits(['edit'])
 const edit = () => {
   emits('edit')
 }
+defineExpose({
+  init
+})
 init()
 formatPwd()
 formatLabel()
 </script>
 
 <style lang="less" scope>
+.setting-tip-btn {
+  height: 22px !important;
+  line-height: 22px !important;
+  margin-left: 2px !important;
+}
 .info-template-container {
   padding: 24px;
   .info-template-header {

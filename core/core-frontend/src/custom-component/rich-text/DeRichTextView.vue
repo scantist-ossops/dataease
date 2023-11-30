@@ -28,6 +28,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatDataEaseBi } from '@/utils/url'
 import tinymce from 'tinymce/tinymce' // tinymce默认hidden，不引入不显示
 import Editor from '@tinymce/tinymce-vue' // 编辑器引入
 import 'tinymce/themes/silver/theme' // 编辑器主题
@@ -57,7 +58,6 @@ import ChartError from '@/views/chart/components/views/components/ChartError.vue
 import { useEmitt } from '@/hooks/web/useEmitt'
 const snapshotStore = snapshotStoreWithOut()
 const errMsg = ref('')
-const curFields = ref([])
 const dvMainStore = dvMainStoreWithOut()
 const { canvasViewInfo } = storeToRefs(dvMainStore)
 const isError = ref(false)
@@ -114,10 +114,10 @@ const myValue = ref('')
 const init = ref({
   selector: '#' + tinymceId,
   toolbar_items_size: 'small',
-  language_url: '/tinymce-dataease-private/langs/zh_CN.js', // 汉化路径是自定义的，一般放在public或static里面
+  language_url: formatDataEaseBi('/tinymce-dataease-private/langs/zh_CN.js'), // 汉化路径是自定义的，一般放在public或static里面
   language: 'zh_CN',
-  skin_url: '/tinymce-dataease-private/skins/ui/oxide', // 皮肤
-  content_css: '/tinymce-dataease-private/skins/content/default/content.css',
+  skin_url: formatDataEaseBi('/tinymce-dataease-private/skins/ui/oxide'), // 皮肤
+  content_css: formatDataEaseBi('/tinymce-dataease-private/skins/content/default/content.css'),
   plugins:
     'advlist autolink link image lists charmap  media wordcount table contextmenu directionality pagebreak', // 插件
   // 工具栏
@@ -370,7 +370,6 @@ const initCurFields = chartDetails => {
         yDataeaseNames.push(yItem.dataeaseName)
         yDataeaseNamesCfg[yItem.dataeaseName] = yItem.formatterCfg
       })
-      rowDataFormat(rowData, yDataeaseNames, yDataeaseNamesCfg)
     }
     for (const key in rowData) {
       dataRowSelect.value[nameIdMap[key]] = rowData[key]
@@ -385,15 +384,6 @@ const initCurFields = chartDetails => {
       eventBus.emit('initCurFields-' + element.value.id)
     })
   }
-}
-
-const rowDataFormat = (rowData, yDataeaseNames, yDataeaseNamesCfg) => {
-  console.log(
-    'rowData, yDataeaseNames, yDataeaseNamesCfg',
-    rowData,
-    yDataeaseNames,
-    yDataeaseNamesCfg
-  )
 }
 
 const renderChart = () => {

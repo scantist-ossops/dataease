@@ -2,7 +2,9 @@ package io.dataease.template.service;
 
 import io.dataease.api.template.TemplateMarketApi;
 import io.dataease.api.template.response.MarketBaseResponse;
-import io.dataease.template.manage.TemplateMarketManage;
+import io.dataease.api.template.response.MarketPreviewBaseResponse;
+import io.dataease.api.template.vo.MarketMetaDataVO;
+import io.dataease.template.manage.TemplateCenterManage;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,14 +20,28 @@ import java.util.List;
 public class TemplateMarketService implements TemplateMarketApi {
 
     @Resource
-    private TemplateMarketManage templateMarketManage;
+    private TemplateCenterManage templateCenterManage;
     @Override
     public MarketBaseResponse searchTemplate() {
-        return templateMarketManage.searchTemplate();
+        return templateCenterManage.searchTemplate();
+    }
+    @Override
+    public MarketBaseResponse searchTemplateRecommend() {
+        return templateCenterManage.searchTemplateRecommend();
+    }
+
+    @Override
+    public MarketPreviewBaseResponse searchTemplatePreview() {
+        return templateCenterManage.searchTemplatePreview();
     }
 
     @Override
     public List<String> categories() {
-        return templateMarketManage.getCategories();
+        return templateCenterManage.getCategories();
+    }
+
+    @Override
+    public List<MarketMetaDataVO> categoriesObject() {
+        return templateCenterManage.getCategoriesObject();
     }
 }
